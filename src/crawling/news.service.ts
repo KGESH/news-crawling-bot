@@ -24,7 +24,7 @@ export class NewsService {
 
   async crawlingCoinDeskNews() {
     const url = this.configService.get<string>('COIN_DESK_NEWS_URL');
-    const domain = this.crawlingService.getDomain(url, '.com');
+    const baseUrl = this.crawlingService.getBaseUrl(url, '.com');
     const response = await firstValueFrom(this.httpService.get(url));
     const $ = cheerio.load(response.data);
 
@@ -33,7 +33,7 @@ export class NewsService {
     $('section#section-list li').each((_, liTag) => {
       const aTag = $(liTag).find('a');
       if (aTag) {
-        const url = new URL(aTag.attr('href'), domain);
+        const url = new URL(aTag.attr('href'), baseUrl);
         const params = new URLSearchParams(url.search);
         const postId = params.get('idxno'); // 게시글 번호
 
@@ -62,7 +62,7 @@ export class NewsService {
 
   async crawlingInvestingNews() {
     const url = this.configService.get<string>('INVESTING_NEWS_URL');
-    const domain = this.crawlingService.getDomain(url, '.com');
+    const baseUrl = this.crawlingService.getBaseUrl(url, '.com');
     const response = await firstValueFrom(this.httpService.get(url));
     const $ = cheerio.load(response.data);
 
@@ -71,7 +71,7 @@ export class NewsService {
     $('section#leftColumn div.largeTitle article[data-id]').each((_, article) => {
       const aTag = $(article).find('a');
       if (aTag) {
-        const url = new URL(aTag.attr('href'), domain);
+        const url = new URL(aTag.attr('href'), baseUrl);
         const postId = $(article).attr('data-id'); // 게시글 번호
 
         if (!this.cachedInvestingNewsLinks.has(postId)) {

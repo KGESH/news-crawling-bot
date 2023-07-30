@@ -7,9 +7,9 @@ export class CrawlingService {
   private logger = new Logger(CrawlingService.name);
   /**
    * @example
-   * getDomain('https://www.google.com/search-sample?name=jee', '.com') // https://www.google.com
+   * getBaseUrl('https://www.google.com/search-sample?name=jee', '.com') // https://www.google.com
    */
-  getDomain(url: string, topLevelDomain: string) {
+  getBaseUrl(url: string, topLevelDomain: string) {
     return url.split(topLevelDomain)[0] + topLevelDomain;
   }
 
