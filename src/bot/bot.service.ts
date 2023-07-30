@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as TelegramBot from 'node-telegram-bot-api';
 import { TelegramBotMessage } from './bot.types';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -8,7 +7,6 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class BotService {
   private logger = new Logger(BotService.name);
-  private readonly bot: TelegramBot;
   private readonly apiEndpoint: string;
   private readonly groupChatRoomId: string;
   private readonly newsThreadId: string; // 뉴스 기사 봇
@@ -16,21 +14,12 @@ export class BotService {
   private readonly reminderThreadId: string; // 정기 알림 봇
 
   constructor(private configService: ConfigService, private httpService: HttpService) {
-    const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN');
-
     this.apiEndpoint = this.configService.get<string>('TELEGRAM_API_ENDPOINT');
     this.groupChatRoomId = this.configService.get<string>('GROUP_CHAT_ROOM_ID');
 
     this.newsThreadId = this.configService.get<string>('NEWS_THREAD_ID');
     this.upDownThreadId = this.configService.get<string>('UPDOWN_THREAD_ID');
     this.reminderThreadId = this.configService.get<string>('REMINDER_THREAD_ID');
-
-    this.bot = new TelegramBot(botToken, { polling: false });
-    this.bot.on('message', this.onReceiveMessage);
-  }
-
-  private onReceiveMessage(msg: any) {
-    this.logger.log(msg);
   }
 
   async sendMessageToUpDownChatRoom(message: string) {
