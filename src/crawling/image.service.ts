@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import * as cheerio from 'cheerio';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { S3Service } from '../imfra/aws/s3.service';
 
 @Injectable()
 export class ImageService {
@@ -15,6 +16,7 @@ export class ImageService {
     private crawlingService: CrawlingService,
     private configService: ConfigService,
     private httpService: HttpService,
+    private s3Service: S3Service,
   ) {}
 
   async crawlingCoin360Image() {
@@ -60,16 +62,16 @@ export class ImageService {
     await browser.close();
   }
 
-  async crawlingFearGreedIndexImage() {
-    const url = this.configService.get<string>('FEAR_GREED_INDEX_IMAGE_URL');
-    const response = await firstValueFrom(this.httpService.get(url));
-
-    const $ = cheerio.load(response.data);
-
-    const imageUrl = $(`div.columns img`).attr('src');
-
-    this.logger.log(`ImageUrl: ${imageUrl}`);
+  async sendFearGreedIndexImage() {
+    const image = await this.getFearGreedIndexImage();
+    const imageUrl = await this.s3Service.uploadImage('fear-greed-index.png', image);
 
     await this.botService.sendMessageToReminderChatRoom(imageUrl);
+  }
+
+  async getFearGreedIndexImage(): Promise<ArrayBuffer> {
+    const uri = this.configService.get<string>('FEAR_GREED_INDEX_IMAGE_URI');
+    const imageBuffer = (await firstValueFrom(this.httpService.get(uri, { responseType: 'arraybuffer' }))).data;
+    return imageBuffer;
   }
 }

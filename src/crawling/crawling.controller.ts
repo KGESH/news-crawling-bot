@@ -18,7 +18,7 @@ export class CrawlingController {
   @Interval(INTERVAL_SCHEDULE.EVERY_10_MINUTES)
   async crawlingFearGreedIndexImage() {
     this.logger.log('Crawling Fear & Greed Index Image...');
-    return this.imageService.crawlingFearGreedIndexImage();
+    return this.imageService.sendFearGreedIndexImage();
   }
 
   @Interval(INTERVAL_SCHEDULE.EVERY_2_MINUTES)
