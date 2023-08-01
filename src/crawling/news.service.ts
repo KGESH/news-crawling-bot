@@ -1,25 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BotService } from '../bot/bot.service';
 import { ConfigService } from '@nestjs/config';
-import { CoinDeskNewsLink } from './crawling.types';
+import { CACHE_PREFIX, CoinDeskNewsLink } from './crawling.types';
 import { CrawlingService } from './crawling.service';
 import * as cheerio from 'cheerio';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { RedisService } from '../cache/redis.service';
 
 @Injectable()
 export class NewsService {
   private logger = new Logger(NewsService.name);
-
-  /** Todo: replace to redis */
-  private cachedCoinDeskNewsLinks: Set<string> = new Set();
-  private cachedInvestingNewsLinks: Set<string> = new Set();
 
   constructor(
     private botService: BotService,
     private configService: ConfigService,
     private crawlingService: CrawlingService,
     private httpService: HttpService,
+    private redisService: RedisService,
   ) {}
 
   async crawlingCoinDeskNews() {
@@ -30,27 +28,27 @@ export class NewsService {
 
     const newsLinks: CoinDeskNewsLink[] = [];
 
-    $('section#section-list li').each((_, liTag) => {
-      const aTag = $(liTag).find('a');
+    for (const element of $('section#section-list li')) {
+      const aTag = $(element).find('a');
       if (aTag) {
         const url = new URL(aTag.attr('href'), baseUrl);
         const params = new URLSearchParams(url.search);
         const postId = params.get('idxno'); // 게시글 번호
 
-        if (!this.cachedCoinDeskNewsLinks.has(postId)) {
+        const isCached = await this.redisService.get<string>(`${CACHE_PREFIX.COIN_DESK}/${postId}`);
+        if (!isCached) {
           newsLinks.push({
             postId,
             url: url.href,
           });
         }
       }
-    });
+    }
 
-    this.logger.log(`CoinDesk News Links: ${newsLinks}`);
-
-    newsLinks.forEach((item) => this.cachedCoinDeskNewsLinks.add(item.postId));
+    newsLinks.forEach((item) => this.redisService.set(`${CACHE_PREFIX.COIN_DESK}/${item.postId}`, item.url));
 
     const sendMessagePromises = newsLinks.map((item) => this.botService.sendMessageToNewsChatRoom(item.url));
+    this.logger.log(`newsLinks: `, newsLinks);
 
     const sendMessageResults = await Promise.allSettled(sendMessagePromises);
 
@@ -68,26 +66,26 @@ export class NewsService {
 
     const newsLinks: CoinDeskNewsLink[] = [];
 
-    $('section#leftColumn div.largeTitle article[data-id]').each((_, article) => {
-      const aTag = $(article).find('a');
+    for (const element of $('section#leftColumn div.largeTitle article[data-id]')) {
+      const aTag = $(element).find('a');
       if (aTag) {
         const url = new URL(aTag.attr('href'), baseUrl);
-        const postId = $(article).attr('data-id'); // 게시글 번호
+        const postId = $(element).attr('data-id'); // 게시글 번호
 
-        if (!this.cachedInvestingNewsLinks.has(postId)) {
+        const isCached = await this.redisService.get<string>(`${CACHE_PREFIX.INVESTING}/${postId}`);
+        if (!isCached) {
           newsLinks.push({
             postId,
             url: url.href,
           });
         }
       }
-    });
+    }
 
-    this.logger.log(`Investing News Links: ${newsLinks}`);
-
-    newsLinks.forEach((item) => this.cachedInvestingNewsLinks.add(item.postId));
+    newsLinks.forEach((item) => this.redisService.set(`${CACHE_PREFIX.INVESTING}/${item.postId}`, item.url));
 
     const sendMessagePromises = newsLinks.map((item) => this.botService.sendMessageToNewsChatRoom(item.url));
+    this.logger.log(`Investing News Links: `, newsLinks);
 
     const sendMessageResults = await Promise.allSettled(sendMessagePromises);
 
@@ -97,19 +95,17 @@ export class NewsService {
     });
   }
 
-  resetCache() {
+  async resetCache() {
     this.logger.log('Reset Cache');
-    this.cachedCoinDeskNewsLinks.clear();
-    this.cachedInvestingNewsLinks.clear();
+    await this.redisService.reset();
   }
 
+  /** Todo: replace to redis */
   showCache() {
     this.logger.log('CoinDesk News Links');
-    this.logger.log(this.cachedCoinDeskNewsLinks);
     this.logger.log('----------------');
     this.logger.log('Investing News Links');
-    this.logger.log(this.cachedInvestingNewsLinks);
 
-    return { coinDesk: this.cachedCoinDeskNewsLinks, investing: this.cachedInvestingNewsLinks };
+    return { coinDesk: '', investing: '' };
   }
 }

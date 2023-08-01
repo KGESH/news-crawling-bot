@@ -5,9 +5,10 @@ import { BotModule } from '../bot/bot.module';
 import { ImageService } from './image.service';
 import { NewsService } from './news.service';
 import { S3Service } from '../imfra/aws/s3.service';
+import { RedisModule } from '../cache/redis.module';
 
 @Module({
-  imports: [BotModule],
+  imports: [RedisModule, BotModule],
   controllers: [CrawlingController],
   providers: [CrawlingService, NewsService, ImageService, S3Service],
 })

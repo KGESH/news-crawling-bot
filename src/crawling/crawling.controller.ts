@@ -34,9 +34,9 @@ export class CrawlingController {
   }
 
   @Cron(CRON_SCHEDULE.EVERY_1ST_DAY_OF_MONTH)
-  resetCache() {
+  async resetCache() {
     this.logger.log('Reset Cache...');
-    this.newsService.resetCache();
+    await this.newsService.resetCache();
   }
 
   @Get('cache')

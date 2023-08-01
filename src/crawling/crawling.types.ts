@@ -23,3 +23,8 @@ export const INTERVAL_SCHEDULE = {
   EVERY_10_SECONDS: 1000 * 10,
   EVERY_30_SECONDS: 1000 * 30,
 } as const;
+
+export const CACHE_PREFIX = {
+  COIN_DESK: 'coin_desk',
+  INVESTING: 'investing',
+} as const;
