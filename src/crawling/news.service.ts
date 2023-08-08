@@ -95,6 +95,52 @@ export class NewsService {
     });
   }
 
+  /** Todo: 퍼펫티어로 변경. 대상이 React로 개발된 페이지임 */
+  async crawlingCoinNessNews() {
+    const url = this.configService.get<string>('COIN_NESS_NEWS_URL');
+    const baseUrl = this.crawlingService.getBaseUrl(url, '.com');
+    const response = await firstValueFrom(this.httpService.get(url));
+    const $ = cheerio.load(response.data);
+
+    console.log('response: ', response.data);
+
+    const newsLinks: CoinDeskNewsLink[] = [];
+
+    let i = 0;
+    for (const element of $('main > div:eq(1) > div:eq(2) > a')) {
+      const aTag = new URL($(element).attr('href'));
+      console.log('parsed A tag: ', aTag);
+
+      if (aTag) {
+        const url = aTag;
+        // const url = new URL(aTag.attr('href'), baseUrl);
+        const postId = `${i++}`;
+        // const postId = $(element).attr('data-id'); // 게시글 번호
+
+        const isCached = await this.redisService.get<string>(`${CACHE_PREFIX.COIN_NESS}/${postId}`);
+        if (!isCached) {
+          newsLinks.push({
+            postId,
+            url: url.href,
+          });
+        }
+      }
+    }
+
+    console.log('newsLinks: ', newsLinks);
+    newsLinks.forEach((item) => this.redisService.set(`${CACHE_PREFIX.INVESTING}/${item.postId}`, item.url));
+
+    // const sendMessagePromises = newsLinks.map((item) => this.botService.sendMessageToNewsChatRoom(item.url));
+    // this.logger.log(`CoinNess News Links: `, newsLinks);
+    //
+    // const sendMessageResults = await Promise.allSettled(sendMessagePromises);
+    //
+    // /** Todo: Logging error */
+    // sendMessageResults.forEach((sendMessageResult) => {
+    //   if (sendMessageResult.status === 'rejected') this.logger.error(sendMessageResult.reason);
+    // });
+  }
+
   async resetCache() {
     this.logger.log('Reset Cache');
     await this.redisService.reset();

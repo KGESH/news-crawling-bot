@@ -27,4 +27,5 @@ export const INTERVAL_SCHEDULE = {
 export const CACHE_PREFIX = {
   COIN_DESK: 'coin_desk',
   INVESTING: 'investing',
+  COIN_NESS: 'coin_ness',
 } as const;

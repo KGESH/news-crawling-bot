@@ -6,7 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CrawlingService } from './crawling.service';
 import { S3Service } from '../imfra/aws/s3.service';
 
-describe('CatsController', () => {
+describe('CrawlingService', () => {
   let imageService: ImageService;
   let configService: ConfigService;
   let s3Service: S3Service;

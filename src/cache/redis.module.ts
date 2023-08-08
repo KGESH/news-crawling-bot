@@ -9,7 +9,10 @@ import { RedisService } from './redis.service';
     CacheModule.registerAsync({
       useFactory: async () => ({
         store: await redisStore({
-          url: `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+          url:
+            process.env.NODE_ENV === 'production'
+              ? `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`
+              : `redis://localhost:6379`,
         }),
       }),
     }),
