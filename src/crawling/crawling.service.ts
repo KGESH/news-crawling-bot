@@ -27,7 +27,7 @@ export class CrawlingService {
       : {};
 
     const browser = await puppeteer.launch({
-      headless: false,
+      headless: true,
       waitForInitialPage: true,
       ...options,
     });
