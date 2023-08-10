@@ -78,11 +78,12 @@ export class NewsService {
             postId,
             url: url.href,
           });
+          await this.redisService.set(`${CACHE_PREFIX.INVESTING}/${postId}`, url.href);
         }
       }
     }
 
-    newsLinks.forEach((item) => this.redisService.set(`${CACHE_PREFIX.INVESTING}/${item.postId}`, item.url));
+    // newsLinks.forEach((item) => this.redisService.set(`${CACHE_PREFIX.INVESTING}/${item.postId}`, item.url));
 
     const sendMessagePromises = newsLinks.map((item) => this.botService.sendMessageToNewsChatRoom(item.url));
     this.logger.log(`Investing News Links: `, newsLinks);
@@ -95,50 +96,34 @@ export class NewsService {
     });
   }
 
-  /** Todo: 퍼펫티어로 변경. 대상이 React로 개발된 페이지임 */
   async crawlingCoinNessNews() {
     const url = this.configService.get<string>('COIN_NESS_NEWS_URL');
-    const baseUrl = this.crawlingService.getBaseUrl(url, '.com');
-    const response = await firstValueFrom(this.httpService.get(url));
-    const $ = cheerio.load(response.data);
+    const { browser, page } = await this.crawlingService.launchBrowser(url);
 
-    console.log('response: ', response.data);
+    const querySelector = `main > div:nth-of-type(2) > div:nth-of-type(3) a`;
+    await page.waitForSelector(querySelector);
+    const crawledLinks = await page.$$eval(querySelector, (nodes) => nodes.map((a) => a.href));
+    await browser.close();
 
-    const newsLinks: CoinDeskNewsLink[] = [];
+    const newsLinks: string[] = [];
 
-    let i = 0;
-    for (const element of $('main > div:eq(1) > div:eq(2) > a')) {
-      const aTag = new URL($(element).attr('href'));
-      console.log('parsed A tag: ', aTag);
-
-      if (aTag) {
-        const url = aTag;
-        // const url = new URL(aTag.attr('href'), baseUrl);
-        const postId = `${i++}`;
-        // const postId = $(element).attr('data-id'); // 게시글 번호
-
-        const isCached = await this.redisService.get<string>(`${CACHE_PREFIX.COIN_NESS}/${postId}`);
-        if (!isCached) {
-          newsLinks.push({
-            postId,
-            url: url.href,
-          });
-        }
+    for (const newsUrl of crawledLinks) {
+      const isCached = await this.redisService.get<string>(`${CACHE_PREFIX.COIN_NESS}/${newsUrl}`);
+      if (!isCached) {
+        newsLinks.push(newsUrl);
+        await this.redisService.set(`${CACHE_PREFIX.COIN_NESS}/${newsUrl}`, newsUrl);
       }
     }
 
-    console.log('newsLinks: ', newsLinks);
-    newsLinks.forEach((item) => this.redisService.set(`${CACHE_PREFIX.INVESTING}/${item.postId}`, item.url));
+    const sendMessagePromises = newsLinks.map((newsUrl) => this.botService.sendMessageToNewsChatRoom(newsUrl));
+    this.logger.log(`CoinNess News Links: `, newsLinks);
 
-    // const sendMessagePromises = newsLinks.map((item) => this.botService.sendMessageToNewsChatRoom(item.url));
-    // this.logger.log(`CoinNess News Links: `, newsLinks);
-    //
-    // const sendMessageResults = await Promise.allSettled(sendMessagePromises);
-    //
-    // /** Todo: Logging error */
-    // sendMessageResults.forEach((sendMessageResult) => {
-    //   if (sendMessageResult.status === 'rejected') this.logger.error(sendMessageResult.reason);
-    // });
+    const sendMessageResults = await Promise.allSettled(sendMessagePromises);
+
+    /** Todo: Logging error */
+    sendMessageResults.forEach((sendMessageResult) => {
+      if (sendMessageResult.status === 'rejected') this.logger.error(sendMessageResult.reason);
+    });
   }
 
   async resetCache() {
